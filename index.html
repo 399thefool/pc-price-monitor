@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>装机行情监控台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">PC Builder Market Monitor</p>
+          <h1>装机行情监控台</h1>
+        </div>
+        <div class="status-panel" aria-live="polite">
+          <span class="pulse"></span>
+          <div>
+            <strong id="marketStatus">实时监控中</strong>
+            <small id="lastUpdate">等待行情刷新</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="overview-grid" aria-label="装机概览">
+        <article class="metric-card">
+          <span>当前总价</span>
+          <strong id="totalPrice">¥0</strong>
+          <small id="totalChange">请先选择配件</small>
+        </article>
+        <article class="metric-card">
+          <span>30日涨跌</span>
+          <strong id="thirtyDayChange">0.0%</strong>
+          <small id="changeHint">基于所选配置历史价</small>
+        </article>
+        <article class="metric-card">
+          <span>入手建议</span>
+          <strong id="buyAdvice">待选型</strong>
+          <small id="buyReason">选择配件后生成判断</small>
+        </article>
+        <article class="metric-card">
+          <span>预算占用</span>
+          <strong id="budgetUsage">0%</strong>
+          <small>
+            <label for="budgetInput">预算</label>
+            <input id="budgetInput" type="number" min="2000" step="500" value="8000" />
+          </small>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <aside class="builder-panel" aria-label="线上装机选型">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Build</p>
+              <h2>线上装机</h2>
+            </div>
+            <button id="clearBuild" class="icon-button" type="button" title="清空配置" aria-label="清空配置">↺</button>
+          </div>
+          <div id="categoryTabs" class="category-tabs"></div>
+          <div id="partsList" class="parts-list"></div>
+        </aside>
+
+        <section class="main-panel">
+          <div class="config-board">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Selected</p>
+                <h2>配置清单</h2>
+              </div>
+              <button id="exportBuild" type="button" class="primary-button">导出清单</button>
+            </div>
+            <div id="selectedParts" class="selected-grid"></div>
+            <div id="compatibility" class="compatibility"></div>
+          </div>
+
+          <div class="analytics-grid">
+            <article class="chart-panel">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Trend</p>
+                  <h2>价格走势</h2>
+                </div>
+                <div class="segmented" role="tablist" aria-label="走势范围">
+                  <button class="range-button active" data-range="7" type="button">7日</button>
+                  <button class="range-button" data-range="30" type="button">30日</button>
+                  <button class="range-button" data-range="90" type="button">90日</button>
+                </div>
+              </div>
+              <canvas id="trendCanvas" width="720" height="280" aria-label="价格走势图"></canvas>
+            </article>
+
+            <article class="watch-panel">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Watchlist</p>
+                  <h2>行情雷达</h2>
+                </div>
+                <span id="hotCount" class="badge">0</span>
+              </div>
+              <div id="watchList" class="watch-list"></div>
+            </article>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

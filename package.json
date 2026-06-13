@@ -1,0 +1,13 @@
+{
+  "name": "pc-price-monitor",
+  "version": "0.2.0",
+  "private": true,
+  "description": "PC parts price monitor with a static frontend, Node API, and SQLite database.",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}

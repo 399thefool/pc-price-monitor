@@ -321,6 +321,9 @@ const state = {
   range: 30,
   parts: [],
   tick: 0,
+  apiBaseUrl: "",
+  usingApi: false,
+  marketTimer: null,
 };
 
 const els = {
@@ -382,6 +385,83 @@ function prepareParts() {
       previousPrice: history[history.length - 2],
     };
   });
+}
+
+function getApiCandidates() {
+  const config = window.PC_MONITOR_CONFIG || {};
+  const candidates = [];
+  const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+  if (config.REMOTE_API_BASE_URL) {
+    candidates.push(config.REMOTE_API_BASE_URL);
+  }
+
+  if (isLocalHost && window.location.port === "3000") {
+    candidates.push("");
+  }
+
+  if (isLocalHost || window.location.protocol === "file:") {
+    candidates.push(config.LOCAL_API_BASE_URL || "http://localhost:3000");
+  }
+
+  return [...new Set(candidates.map((url) => url.replace(/\/$/, "")))];
+}
+
+async function apiRequest(path, options = {}) {
+  const response = await fetch(`${state.apiBaseUrl}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+
+  if (!response.ok) {
+    throw new Error(`API ${response.status}`);
+  }
+
+  return response.json();
+}
+
+function normalizeApiPart(part) {
+  const history = Array.isArray(part.history) ? part.history : [];
+  const price = Number(part.price || history[history.length - 1] || part.basePrice || 0);
+  return {
+    ...part,
+    history,
+    price,
+    previousPrice: Number(part.previousPrice || history[history.length - 2] || price),
+  };
+}
+
+function applyMarketSnapshot(snapshot) {
+  if (!snapshot?.parts?.length) return false;
+
+  state.parts = snapshot.parts.map(normalizeApiPart);
+  const updatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt) : new Date();
+  els.lastUpdate.textContent = `数据库行情 ${updatedAt.toLocaleTimeString("zh-CN", {
+    hour12: false,
+  })}`;
+  els.marketStatus.textContent = "后端已连接";
+  renderAll();
+  return true;
+}
+
+async function connectApi() {
+  const candidates = getApiCandidates();
+
+  for (const candidate of candidates) {
+    try {
+      state.apiBaseUrl = candidate;
+      await apiRequest("/api/health");
+      const snapshot = await apiRequest("/api/parts");
+      state.usingApi = applyMarketSnapshot(snapshot);
+      if (state.usingApi) return true;
+    } catch (error) {
+      state.apiBaseUrl = "";
+      state.usingApi = false;
+    }
+  }
+
+  els.marketStatus.textContent = "离线演示";
+  return false;
 }
 
 function money(value) {
@@ -789,7 +869,7 @@ function renderAll() {
   drawTrend();
 }
 
-function updateMarket() {
+function updateLocalMarket() {
   state.tick += 1;
   state.parts = state.parts.map((part) => {
     const seed = seededValue(`${part.id}-${state.tick}`);
@@ -816,6 +896,23 @@ function updateMarket() {
   renderAll();
 }
 
+async function updateMarket() {
+  if (!state.usingApi) {
+    updateLocalMarket();
+    return;
+  }
+
+  try {
+    const snapshot = await apiRequest("/api/market/tick", { method: "POST" });
+    applyMarketSnapshot(snapshot);
+  } catch (error) {
+    state.usingApi = false;
+    els.marketStatus.textContent = "离线演示";
+    showToast("后端连接断开，已切换本地演示行情");
+    updateLocalMarket();
+  }
+}
+
 function showToast(message) {
   els.toast.textContent = message;
   els.toast.classList.add("show");
@@ -837,7 +934,7 @@ function removePart(category) {
   renderAll();
 }
 
-function exportBuild() {
+async function exportBuild() {
   const selected = getSelectedParts();
   if (!selected.length) {
     showToast("还没有选择配件");
@@ -845,6 +942,9 @@ function exportBuild() {
   }
 
   const { total, change, prediction } = calcTotals();
+  const selectedParts = Object.fromEntries(
+    Object.entries(state.selected).filter(([, id]) => Boolean(id)),
+  );
   const lines = [
     "装机配置清单",
     `总价：${money(total)}`,
@@ -864,6 +964,22 @@ function exportBuild() {
       .catch(() => showToast(text));
   } else {
     showToast(text);
+  }
+
+  if (state.usingApi) {
+    try {
+      await apiRequest("/api/builds", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "我的装机配置",
+          budget: Number(els.budgetInput.value) || 0,
+          selectedParts,
+          totalPrice: total,
+        }),
+      });
+    } catch (error) {
+      console.warn("Build save failed", error);
+    }
   }
 }
 
@@ -922,9 +1038,18 @@ function initDefaultBuild() {
   };
 }
 
-prepareParts();
-initDefaultBuild();
-bindEvents();
-renderAll();
-updateMarket();
-window.setInterval(updateMarket, 5200);
+async function initApp() {
+  prepareParts();
+  initDefaultBuild();
+  bindEvents();
+  renderAll();
+
+  const connected = await connectApi();
+  if (!connected) {
+    updateLocalMarket();
+  }
+
+  state.marketTimer = window.setInterval(updateMarket, 5200);
+}
+
+initApp();

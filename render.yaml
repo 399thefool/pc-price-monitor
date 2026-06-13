@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: pc-price-monitor-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 24.14.1
+      - key: SQLITE_DATA_DIR
+        value: /tmp/pc-price-monitor-data

@@ -133,7 +133,7 @@ function seedDatabase(db) {
   }
 }
 
-function rowToPart(row, history) {
+function rowToPart(row, history, latestPoint = null) {
   const attributes = JSON.parse(row.attributes);
   const tags = JSON.parse(row.tags);
   const current = history[history.length - 1] || row.base_price;
@@ -150,6 +150,8 @@ function rowToPart(row, history) {
     history,
     price: current,
     previousPrice: previous,
+    source: latestPoint?.source || "seed",
+    capturedAt: latestPoint?.captured_at || row.updated_at,
   };
 }
 
@@ -162,13 +164,20 @@ function getParts(db) {
     ORDER BY captured_at DESC, id DESC
     LIMIT 90
   `);
+  const latestStmt = db.prepare(`
+    SELECT source, captured_at
+    FROM price_points
+    WHERE part_id = ?
+    ORDER BY captured_at DESC, id DESC
+    LIMIT 1
+  `);
 
   return rows.map((row) => {
     const history = historyStmt
       .all(row.id)
       .map((item) => item.price)
       .reverse();
-    return rowToPart(row, history);
+    return rowToPart(row, history, latestStmt.get(row.id));
   });
 }
 
@@ -186,7 +195,16 @@ function getPart(db, id) {
     .all(id)
     .map((item) => item.price)
     .reverse();
-  return rowToPart(row, history);
+  const latestPoint = db
+    .prepare(`
+      SELECT source, captured_at
+      FROM price_points
+      WHERE part_id = ?
+      ORDER BY captured_at DESC, id DESC
+      LIMIT 1
+    `)
+    .get(id);
+  return rowToPart(row, history, latestPoint);
 }
 
 function recordPrice(db, partId, price, source = "manual") {

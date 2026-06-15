@@ -347,6 +347,13 @@ const els = {
   clearBuild: document.querySelector("#clearBuild"),
   exportBuild: document.querySelector("#exportBuild"),
   toast: document.querySelector("#toast"),
+  adminPart: document.querySelector("#adminPart"),
+  adminPrice: document.querySelector("#adminPrice"),
+  adminSource: document.querySelector("#adminSource"),
+  adminToken: document.querySelector("#adminToken"),
+  submitAdminPrice: document.querySelector("#submitAdminPrice"),
+  adminMeta: document.querySelector("#adminMeta"),
+  refreshMeta: document.querySelector("#refreshMeta"),
 };
 
 function seededValue(seed) {
@@ -445,8 +452,56 @@ function applyMarketSnapshot(snapshot) {
     hour12: false,
   })}`;
   els.marketStatus.textContent = "后端已连接";
+  renderAdminPanel(snapshot);
   renderAll();
   return true;
+}
+
+function renderAdminPartOptions() {
+  if (!els.adminPart) return;
+  const current = els.adminPart.value;
+  els.adminPart.innerHTML = state.parts
+    .map(
+      (part) => `
+        <option value="${part.id}">${categoryMap[part.category].label} · ${part.name}</option>
+      `,
+    )
+    .join("");
+  if (current && state.parts.some((part) => part.id === current)) {
+    els.adminPart.value = current;
+  }
+}
+
+async function refreshAdminMeta() {
+  if (!state.usingApi) {
+    els.adminMeta.textContent = "当前是离线演示模式，不能写入后端。";
+    return;
+  }
+
+  try {
+    const meta = await apiRequest("/api/admin/meta");
+    els.adminMeta.textContent = meta.adminProtected
+      ? "后端已开启管理员口令保护。"
+      : "后端当前未启用口令保护，可以直接写入。";
+  } catch (error) {
+    els.adminMeta.textContent = "无法读取管理状态。";
+  }
+}
+
+function renderAdminPanel(snapshot = null) {
+  if (!els.adminPart) return;
+  renderAdminPartOptions();
+  const first = state.parts.find(Boolean);
+  if (first && !els.adminPart.value) {
+    els.adminPart.value = first.id;
+  }
+
+  if (snapshot?.updatedAt) {
+    const updatedAt = new Date(snapshot.updatedAt);
+    els.adminMeta.textContent = `最近一次整体行情更新时间：${updatedAt.toLocaleString("zh-CN", {
+      hour12: false,
+    })}`;
+  }
 }
 
 async function connectApi() {
@@ -480,6 +535,18 @@ function money(value) {
 function percent(value) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(1)}%`;
+}
+
+function formatSource(part) {
+  if (!part?.capturedAt) return `来源 ${part?.source || "seed"}`;
+  const capturedAt = new Date(part.capturedAt);
+  return `${part.source || "seed"} · ${capturedAt.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })}`;
 }
 
 function getPart(id) {
@@ -602,6 +669,7 @@ function renderParts() {
                 7日 ${percent(change7)}
               </strong>
               <small class="${prediction.tone}"> · ${prediction.label}</small>
+              <small>${formatSource(part)}</small>
             </div>
             <button class="pick-button" type="button" data-pick="${part.id}">
               ${isSelected ? "已选择" : "选择"}
@@ -639,6 +707,7 @@ function renderSelected() {
             <span>${money(part.price)}</span>
             <span class="${getChange(part, 30) > 0 ? "trend-up" : "trend-down"}">30日 ${percent(getChange(part, 30))}</span>
             <span class="${prediction.tone}">${prediction.label}</span>
+            <span>${formatSource(part)}</span>
           </div>
         </article>
       `;
@@ -770,7 +839,7 @@ function renderWatchList() {
           <div class="watch-top">
             <div>
               <div class="watch-name">${part.name}</div>
-              <small>${categoryMap[part.category].label} · 7日 ${percent(change7)} · 30日 ${percent(change30)}</small>
+              <small>${categoryMap[part.category].label} · 7日 ${percent(change7)} · 30日 ${percent(change30)} · ${formatSource(part)}</small>
             </div>
             <strong class="${label.tone}">${percent(prediction)}</strong>
           </div>
@@ -918,6 +987,55 @@ async function updateMarket() {
   }
 }
 
+async function submitAdminPrice() {
+  if (!state.usingApi) {
+    showToast("当前离线演示模式，不能写入后端");
+    return;
+  }
+
+  const partId = els.adminPart.value;
+  const price = Number(els.adminPrice.value);
+  const source = els.adminSource.value.trim() || "manual";
+  const token = els.adminToken.value.trim();
+
+  if (!partId) {
+    showToast("先选一个配件");
+    return;
+  }
+
+  if (!Number.isFinite(price) || price <= 0) {
+    showToast("请输入有效价格");
+    return;
+  }
+
+  try {
+    const result = await apiRequest("/api/prices", {
+      method: "POST",
+      body: JSON.stringify({
+        partId,
+        price,
+        source,
+        token: token || undefined,
+      }),
+    });
+
+    if (result?.part) {
+      state.parts = state.parts.map((part) =>
+        part.id === result.part.id ? normalizeApiPart(result.part) : part,
+      );
+      renderAll();
+      renderAdminPanel();
+      showToast("价格已写入数据库");
+      els.adminPrice.value = "";
+    }
+  } catch (error) {
+    const message = error.message.includes("401")
+      ? "口令不对，或后端要求管理员口令"
+      : "写入失败";
+    showToast(message);
+  }
+}
+
 function showToast(message) {
   els.toast.textContent = message;
   els.toast.classList.add("show");
@@ -1027,6 +1145,8 @@ function bindEvents() {
 
   els.exportBuild.addEventListener("click", exportBuild);
   els.budgetInput.addEventListener("input", renderMetrics);
+  els.submitAdminPrice.addEventListener("click", submitAdminPrice);
+  els.refreshMeta.addEventListener("click", refreshAdminMeta);
   window.addEventListener("resize", drawTrend);
 }
 
@@ -1052,6 +1172,9 @@ async function initApp() {
   const connected = await connectApi();
   if (!connected) {
     updateLocalMarket();
+  } else {
+    renderAdminPanel();
+    refreshAdminMeta();
   }
 
   state.marketTimer = window.setInterval(updateMarket, 5200);

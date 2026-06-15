@@ -10,12 +10,29 @@
 - 前端已经支持“后端优先，离线兜底”：
   - 如果能连上后端，就读取数据库行情。
   - 如果连不上后端，就继续显示本地模拟行情。
+- 公网后端已部署到 Render。
+- GitHub Pages 前端已指向公网后端地址。
+- 价格录入面板已加入前端。
+- 后端价格记录已增加来源和时间字段。
+- `/api/prices` 已支持可选管理员口令。
 
 线上前端地址：
 
 ```text
 https://399thefool.github.io/pc-price-monitor/
 ```
+
+公网后端地址：
+
+```text
+https://pc-price-monitor.onrender.com
+```
+
+最新说明：
+
+- 当前本地代码已经更新完。
+- 线上 Render 还需要重新部署一次，才能看到最新接口和前端面板。
+- 你需要把刚改过的文件重新上传到 GitHub，触发 Render 自动部署。
 
 本地项目目录：
 
@@ -101,35 +118,24 @@ http://localhost:3000/api/health
 
 ## 下次建议做什么
 
-下一步建议做“后端公网部署”。推荐先用 Render：
+下一步如果继续做，建议优先做“真实数据接入”和“持久化升级”：
 
-1. 把本地项目新增和修改的文件上传到 GitHub 仓库。
-2. 打开 Render，创建新的 Web Service。
-3. 连接 GitHub 仓库 `pc-price-monitor`。
-4. Render 配置：
+1. 把真实商品价格源接进来。
+2. 增加价格抓取定时任务。
+3. 把 SQLite 换成更适合公网长期保存的数据库，比如 Supabase / PostgreSQL。
+4. 给配件加入商品链接和来源备注。
+5. 做价格提醒功能。
 
-```text
-Runtime: Node
-Build Command: npm install
-Start Command: npm start
-```
+如果要改功能，建议先改后端，再改前端展示。
 
-5. 部署成功后拿到后端公网地址，例如：
+注意：Render 免费服务的文件系统不是长期持久化的，SQLite 数据可能在服务重启后重新生成。现在已经能跑通公网链路，但长期稳定保存数据还是建议换成 Supabase / PostgreSQL。
 
-```text
-https://pc-price-monitor-api.onrender.com
-```
+## 这一步你要做什么
 
-6. 修改 `config.js`：
-
-```js
-REMOTE_API_BASE_URL: "你的后端公网地址"
-```
-
-7. 把修改后的 `config.js` 上传到 GitHub。
-8. 打开线上前端，确认它能读取公网后端数据。
-
-注意：Render 免费服务的文件系统不是长期持久化的，SQLite 数据可能在服务重启后重新生成。先用它跑通公网后端，后续建议把数据库换成 Supabase / PostgreSQL。
+1. 把这次更新过的文件重新上传到 GitHub。
+2. 等 Render 自动重新部署。
+3. 打开 `https://pc-price-monitor.onrender.com/api/health` 看是否正常。
+4. 刷新 GitHub Pages 页面，确认前端出现“价格录入”面板。
 
 ## 之后可以继续扩展
 

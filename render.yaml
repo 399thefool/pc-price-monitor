@@ -11,3 +11,5 @@ services:
         value: 24.14.1
       - key: SQLITE_DATA_DIR
         value: /tmp/pc-price-monitor-data
+      - key: ADMIN_TOKEN
+        sync: false

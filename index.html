@@ -100,6 +100,36 @@
               </div>
               <div id="watchList" class="watch-list"></div>
             </article>
+
+            <article class="admin-panel">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Admin</p>
+                  <h2>价格录入</h2>
+                </div>
+                <button id="refreshMeta" type="button" class="icon-button" title="刷新元数据" aria-label="刷新元数据">↻</button>
+              </div>
+              <div class="admin-form">
+                <label>
+                  配件
+                  <select id="adminPart"></select>
+                </label>
+                <label>
+                  新价格
+                  <input id="adminPrice" type="number" min="1" step="1" placeholder="输入新价格" />
+                </label>
+                <label>
+                  来源
+                  <input id="adminSource" type="text" value="manual" placeholder="manual / jd / taobao" />
+                </label>
+                <label>
+                  口令
+                  <input id="adminToken" type="password" placeholder="可选，Render 里设置后再填" />
+                </label>
+                <button id="submitAdminPrice" type="button" class="primary-button">写入价格</button>
+                <p id="adminMeta" class="admin-meta"></p>
+              </div>
+            </article>
           </div>
         </section>
       </section>

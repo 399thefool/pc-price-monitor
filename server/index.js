@@ -18,6 +18,7 @@ const publicFiles = new Set(["/", "/index.html", "/styles.css", "/app.js", "/con
 const port = Number(process.env.PORT || 3000);
 const db = createDb();
 let tick = 0;
+const adminToken = process.env.ADMIN_TOKEN || "";
 
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
@@ -160,6 +161,11 @@ async function handleApi(req, res, pathname) {
       return;
     }
 
+    if (adminToken && body.token !== adminToken) {
+      sendJson(res, 401, { error: "Invalid admin token" });
+      return;
+    }
+
     const part = recordPrice(db, body.partId, Number(body.price), body.source || "manual");
     if (!part) {
       sendJson(res, 404, { error: "Part not found" });
@@ -190,6 +196,14 @@ async function handleApi(req, res, pathname) {
     const body = await readBody(req);
     const build = saveBuild(db, body);
     sendJson(res, 201, { build });
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/api/admin/meta") {
+    sendJson(res, 200, {
+      adminProtected: Boolean(adminToken),
+      updatedAt: new Date().toISOString(),
+    });
     return;
   }
 

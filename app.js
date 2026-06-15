@@ -393,20 +393,20 @@ function getApiCandidates() {
   const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
   const canUseSameOrigin = window.location.protocol === "http:" || window.location.protocol === "https:";
 
-  if (config.REMOTE_API_BASE_URL) {
-    candidates.push(config.REMOTE_API_BASE_URL);
-  }
-
-  if (canUseSameOrigin) {
-    candidates.push(window.location.origin);
-  }
-
   if (isLocalHost && window.location.port === "3000") {
     candidates.push("");
   }
 
   if (isLocalHost || window.location.protocol === "file:") {
     candidates.push(config.LOCAL_API_BASE_URL || "http://localhost:3000");
+  }
+
+  if (config.REMOTE_API_BASE_URL) {
+    candidates.push(config.REMOTE_API_BASE_URL);
+  }
+
+  if (canUseSameOrigin) {
+    candidates.push(window.location.origin);
   }
 
   return [...new Set(candidates.map((url) => url.replace(/\/$/, "")))];

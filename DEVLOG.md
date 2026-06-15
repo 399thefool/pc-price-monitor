@@ -15,6 +15,7 @@
 - 价格录入面板已加入前端。
 - 后端价格记录已增加来源和时间字段。
 - `/api/prices` 已支持可选管理员口令。
+- 已开始搭建自动采集闭环：价格源表、采集接口、GitHub Actions 定时任务。
 
 线上前端地址：
 
@@ -33,6 +34,7 @@ https://pc-price-monitor.onrender.com
 - 当前本地代码已经更新完。
 - 线上 Render 还需要重新部署一次，才能看到最新接口和前端面板。
 - 你需要把刚改过的文件重新上传到 GitHub，触发 Render 自动部署。
+- 这一步的重点不是手动录价，而是把“自动采价”跑起来。
 
 本地项目目录：
 
@@ -136,6 +138,8 @@ http://localhost:3000/api/health
 2. 等 Render 自动重新部署。
 3. 打开 `https://pc-price-monitor.onrender.com/api/health` 看是否正常。
 4. 刷新 GitHub Pages 页面，确认前端出现“价格录入”面板。
+5. 在 GitHub 仓库 Settings -> Secrets and variables -> Actions 里新增 `ADMIN_TOKEN`，值和 Render 里保持一致。
+6. 之后点击 GitHub Actions 里的 `Price Capture` 手动跑一次，验证自动采集接口是否能通。
 
 ## 之后可以继续扩展
 

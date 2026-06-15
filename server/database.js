@@ -74,6 +74,25 @@ function createDb() {
     CREATE INDEX IF NOT EXISTS idx_price_points_part_time
       ON price_points(part_id, captured_at);
 
+    CREATE TABLE IF NOT EXISTS price_sources (
+      id TEXT PRIMARY KEY,
+      part_id TEXT NOT NULL,
+      label TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'json',
+      url TEXT NOT NULL,
+      extractor TEXT NOT NULL DEFAULT '',
+      enabled INTEGER NOT NULL DEFAULT 1,
+      last_price INTEGER,
+      last_status TEXT NOT NULL DEFAULT 'pending',
+      last_checked_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (part_id) REFERENCES parts(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_price_sources_part
+      ON price_sources(part_id);
+
     CREATE TABLE IF NOT EXISTS builds (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -218,6 +237,93 @@ function recordPrice(db, partId, price, source = "manual") {
   return getPart(db, partId);
 }
 
+function getSources(db) {
+  return db
+    .prepare(`
+      SELECT
+        price_sources.*,
+        parts.name AS part_name,
+        parts.category AS part_category
+      FROM price_sources
+      JOIN parts ON parts.id = price_sources.part_id
+      ORDER BY price_sources.created_at DESC
+    `)
+    .all()
+    .map((row) => ({
+      id: row.id,
+      partId: row.part_id,
+      partName: row.part_name,
+      partCategory: row.part_category,
+      label: row.label,
+      type: row.type,
+      url: row.url,
+      extractor: row.extractor,
+      enabled: Boolean(row.enabled),
+      lastPrice: row.last_price,
+      lastStatus: row.last_status,
+      lastCheckedAt: row.last_checked_at,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+}
+
+function upsertSource(db, source) {
+  const part = db.prepare("SELECT id FROM parts WHERE id = ?").get(source.partId);
+  if (!part) return null;
+
+  const id = source.id || `src-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  db.prepare(`
+    INSERT INTO price_sources (
+      id, part_id, label, type, url, extractor, enabled, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(id) DO UPDATE SET
+      part_id = excluded.part_id,
+      label = excluded.label,
+      type = excluded.type,
+      url = excluded.url,
+      extractor = excluded.extractor,
+      enabled = excluded.enabled,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(
+    id,
+    source.partId,
+    source.label || "价格源",
+    source.type || "json",
+    source.url || "",
+    source.extractor || "",
+    source.enabled === false ? 0 : 1,
+  );
+
+  return getSource(db, id);
+}
+
+function getSource(db, id) {
+  return getSources(db).find((source) => source.id === id) || null;
+}
+
+function updateSourceStatus(db, id, status) {
+  db.prepare(`
+    UPDATE price_sources
+    SET
+      last_price = ?,
+      last_status = ?,
+      last_checked_at = CURRENT_TIMESTAMP,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(
+    Number.isFinite(Number(status.price)) ? Number(status.price) : null,
+    status.message || "checked",
+    id,
+  );
+  return getSource(db, id);
+}
+
+function deleteSource(db, id) {
+  const result = db.prepare("DELETE FROM price_sources WHERE id = ?").run(id);
+  return result.changes > 0;
+}
+
 function simulateMarketTick(db, tick) {
   const parts = getParts(db);
   const insert = db.prepare(`
@@ -286,6 +392,10 @@ module.exports = {
   getParts,
   getPart,
   recordPrice,
+  getSources,
+  upsertSource,
+  updateSourceStatus,
+  deleteSource,
   simulateMarketTick,
   saveBuild,
   getBuilds,

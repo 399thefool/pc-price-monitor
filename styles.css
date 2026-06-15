@@ -152,7 +152,8 @@ h3 {
 .config-board,
 .chart-panel,
 .watch-panel,
-.admin-panel {
+.admin-panel,
+.source-panel {
   border: 1px solid rgba(220, 227, 237, 0.86);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
@@ -199,7 +200,8 @@ h3 {
 .config-board,
 .chart-panel,
 .watch-panel,
-.admin-panel {
+.admin-panel,
+.source-panel {
   padding: 16px;
 }
 
@@ -531,6 +533,71 @@ canvas {
   grid-column: 2;
 }
 
+.source-panel {
+  grid-column: 2;
+}
+
+.source-form {
+  display: grid;
+  gap: 10px;
+}
+
+.source-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.source-form input,
+.source-form select {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.source-form .inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-form .inline input {
+  width: auto;
+  min-height: auto;
+}
+
+.source-form .primary-button {
+  width: 100%;
+}
+
+.source-list {
+  display: grid;
+  gap: 8px;
+}
+
+.source-item {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.source-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.source-item small {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 .badge {
   min-width: 34px;
   padding: 4px 8px;
@@ -576,6 +643,10 @@ canvas {
   }
 
   .admin-panel {
+    grid-column: auto;
+  }
+
+  .source-panel {
     grid-column: auto;
   }
 

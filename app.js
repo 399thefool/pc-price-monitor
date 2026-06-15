@@ -354,6 +354,15 @@ const els = {
   submitAdminPrice: document.querySelector("#submitAdminPrice"),
   adminMeta: document.querySelector("#adminMeta"),
   refreshMeta: document.querySelector("#refreshMeta"),
+  sourcePart: document.querySelector("#sourcePart"),
+  sourceType: document.querySelector("#sourceType"),
+  sourceUrl: document.querySelector("#sourceUrl"),
+  sourceExtractor: document.querySelector("#sourceExtractor"),
+  sourceEnabled: document.querySelector("#sourceEnabled"),
+  saveSource: document.querySelector("#saveSource"),
+  runCapture: document.querySelector("#runCapture"),
+  sourceList: document.querySelector("#sourceList"),
+  sourceMeta: document.querySelector("#sourceMeta"),
 };
 
 function seededValue(seed) {
@@ -460,13 +469,21 @@ function applyMarketSnapshot(snapshot) {
 function renderAdminPartOptions() {
   if (!els.adminPart) return;
   const current = els.adminPart.value;
-  els.adminPart.innerHTML = state.parts
+  const options = state.parts
     .map(
       (part) => `
         <option value="${part.id}">${categoryMap[part.category].label} · ${part.name}</option>
       `,
     )
     .join("");
+  els.adminPart.innerHTML = options;
+  if (els.sourcePart) {
+    const sourceCurrent = els.sourcePart.value;
+    els.sourcePart.innerHTML = options;
+    if (sourceCurrent && state.parts.some((part) => part.id === sourceCurrent)) {
+      els.sourcePart.value = sourceCurrent;
+    }
+  }
   if (current && state.parts.some((part) => part.id === current)) {
     els.adminPart.value = current;
   }
@@ -501,6 +518,50 @@ function renderAdminPanel(snapshot = null) {
     els.adminMeta.textContent = `最近一次整体行情更新时间：${updatedAt.toLocaleString("zh-CN", {
       hour12: false,
     })}`;
+  }
+}
+
+function renderSources(sources = []) {
+  if (!els.sourceList) return;
+
+  if (!sources.length) {
+    els.sourceList.innerHTML = `
+      <div class="source-item">
+        <strong>还没有价格源</strong>
+        <small>先绑定一个测试源，例如 URL 填 https://example.com/price?price=2399</small>
+      </div>
+    `;
+    return;
+  }
+
+  els.sourceList.innerHTML = sources
+    .map(
+      (source) => `
+        <article class="source-item">
+          <strong>${source.label} · ${source.partName}</strong>
+          <small>${source.type} · ${source.enabled ? "启用" : "停用"} · ${source.lastStatus || "pending"}</small>
+          <small>${source.url}</small>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+async function refreshSources() {
+  if (!state.usingApi) {
+    renderSources([]);
+    if (els.sourceMeta) els.sourceMeta.textContent = "离线演示模式不能管理价格源。";
+    return;
+  }
+
+  try {
+    const payload = await apiRequest("/api/sources");
+    renderSources(payload.sources || []);
+    if (els.sourceMeta) {
+      els.sourceMeta.textContent = `已加载 ${(payload.sources || []).length} 个价格源。`;
+    }
+  } catch (error) {
+    if (els.sourceMeta) els.sourceMeta.textContent = "价格源加载失败。";
   }
 }
 
@@ -1036,6 +1097,61 @@ async function submitAdminPrice() {
   }
 }
 
+async function savePriceSource() {
+  if (!state.usingApi) {
+    showToast("当前离线演示模式，不能保存价格源");
+    return;
+  }
+
+  const token = els.adminToken.value.trim();
+  const body = {
+    partId: els.sourcePart.value,
+    label: els.sourceType.value === "fixed" ? "固定测试源" : "JSON 测试源",
+    type: els.sourceType.value,
+    url: els.sourceUrl.value.trim(),
+    extractor: els.sourceExtractor.value.trim(),
+    enabled: els.sourceEnabled.checked,
+    token: token || undefined,
+  };
+
+  if (!body.partId || !body.url) {
+    showToast("请选择配件并填写源地址");
+    return;
+  }
+
+  try {
+    await apiRequest("/api/sources", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    showToast("价格源已保存");
+    els.sourceUrl.value = "";
+    els.sourceExtractor.value = "";
+    refreshSources();
+  } catch (error) {
+    showToast(error.message.includes("401") ? "口令不对，不能保存价格源" : "价格源保存失败");
+  }
+}
+
+async function runCaptureNow() {
+  if (!state.usingApi) {
+    showToast("当前离线演示模式，不能自动采集");
+    return;
+  }
+
+  try {
+    const payload = await apiRequest("/api/sources/run", {
+      method: "POST",
+      body: JSON.stringify({ token: els.adminToken.value.trim() || undefined }),
+    });
+    applyMarketSnapshot(payload.snapshot);
+    renderSources(payload.sources?.sources || []);
+    showToast(`采集完成：${payload.results.length} 个来源`);
+  } catch (error) {
+    showToast(error.message.includes("401") ? "口令不对，不能执行采集" : "采集失败");
+  }
+}
+
 function showToast(message) {
   els.toast.textContent = message;
   els.toast.classList.add("show");
@@ -1147,6 +1263,8 @@ function bindEvents() {
   els.budgetInput.addEventListener("input", renderMetrics);
   els.submitAdminPrice.addEventListener("click", submitAdminPrice);
   els.refreshMeta.addEventListener("click", refreshAdminMeta);
+  els.saveSource.addEventListener("click", savePriceSource);
+  els.runCapture.addEventListener("click", runCaptureNow);
   window.addEventListener("resize", drawTrend);
 }
 
@@ -1175,6 +1293,7 @@ async function initApp() {
   } else {
     renderAdminPanel();
     refreshAdminMeta();
+    refreshSources();
   }
 
   state.marketTimer = window.setInterval(updateMarket, 5200);

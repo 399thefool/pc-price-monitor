@@ -130,6 +130,44 @@
                 <p id="adminMeta" class="admin-meta"></p>
               </div>
             </article>
+
+            <article class="source-panel">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Source</p>
+                  <h2>价格源管理</h2>
+                </div>
+                <button id="runCapture" type="button" class="primary-button">立即采集</button>
+              </div>
+              <div class="source-form">
+                <label>
+                  绑定配件
+                  <select id="sourcePart"></select>
+                </label>
+                <label>
+                  源类型
+                  <select id="sourceType">
+                    <option value="json">JSON 源</option>
+                    <option value="fixed">固定价格</option>
+                  </select>
+                </label>
+                <label>
+                  源地址
+                  <input id="sourceUrl" type="text" placeholder="https://example.com/price?price=2399" />
+                </label>
+                <label>
+                  解析器 / 固定值
+                  <input id="sourceExtractor" type="text" placeholder="JSON 源可留空，fixed 填数字" />
+                </label>
+                <label class="inline">
+                  <input id="sourceEnabled" type="checkbox" checked />
+                  启用自动采集
+                </label>
+                <button id="saveSource" type="button" class="primary-button">保存价格源</button>
+                <div id="sourceList" class="source-list"></div>
+                <p id="sourceMeta" class="admin-meta"></p>
+              </div>
+            </article>
           </div>
         </section>
       </section>
